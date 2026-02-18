@@ -1,0 +1,78 @@
+import sys
+import os
+
+# Agregar el directorio padre al path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import pytest
+from app import create_app
+from extensions import db as _db
+from models.user import User
+from models.book import Book
+
+@pytest.fixture(scope='session')
+def app():
+    app = create_app()
+    app.config.update({
+        'TESTING': True,
+        'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
+        'JWT_SECRET_KEY': 'test-secret-key'
+    })
+    yield app
+
+@pytest.fixture(scope='session')
+def db(app):
+    with app.app_context():
+        _db.create_all()
+        yield _db
+        _db.drop_all()
+
+@pytest.fixture(scope='function')
+def client(app, db):
+    with app.test_client() as client:
+        with app.app_context():
+            yield client
+        _db.session.rollback()
+
+@pytest.fixture
+def admin_token(client, db):
+    from extensions import db as database
+    # Crear admin
+    user = User(username='testadmin', email='testadmin@test.com', role='admin')
+    user.set_password('admin123')
+    database.session.add(user)
+    database.session.commit()
+
+    # Login
+    response = client.post('/api/auth/login', json={
+        'username': 'testadmin',
+        'password': 'admin123'
+    })
+    return response.json['access_token']
+
+@pytest.fixture
+def member_token(client, db):
+    from extensions import db as database
+    user = User(username='testmember', email='testmember@test.com', role='member')
+    user.set_password('member123')
+    database.session.add(user)
+    database.session.commit()
+
+    response = client.post('/api/auth/login', json={
+        'username': 'testmember',
+        'password': 'member123'
+    })
+    return response.json['access_token']
+
+@pytest.fixture
+def sample_book(client, admin_token, db):
+    response = client.post('/api/books',
+        json={
+            'isbn': '9780134685991',
+            'title': 'Clean Code',
+            'author': 'Robert Martin',
+            'total_copies': 3
+        },
+        headers={'Authorization': f'Bearer {admin_token}'}
+    )
+    return response.json

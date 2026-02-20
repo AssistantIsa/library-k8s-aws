@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 5000
+EXPOSE $PORT
 
-# Script que inicializa BD y luego inicia gunicorn
-CMD ["sh", "-c", "python init_db.py && gunicorn --bind 0.0.0.0:5000 --workers 4 'app:create_app()'"]
+# Railway usa variable $PORT
+CMD gunicorn --bind 0.0.0.0:$PORT --workers 2 'app:create_app()'

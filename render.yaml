@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: library-frontend-app
+    env: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: NODE_VERSION
+        value: 18.20.4
+      - key: REACT_APP_API_URL
+        value: https://library-backend-55dx.onrender.com/api
